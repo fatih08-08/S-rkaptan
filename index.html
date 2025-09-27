@@ -25,7 +25,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
 <script>
-const { Engine, Render, Runner, World, Bodies, Body } = Matter;
+const { Engine, Render, Runner, World, Bodies, Body, Composite } = Matter;
 
 const canvas = document.getElementById('game');
 canvas.width = window.innerWidth;
@@ -34,21 +34,22 @@ canvas.height = window.innerHeight;
 const engine = Engine.create();
 const world = engine.world;
 
+// Renderer sadece physics debug, canvas çizim biz yapacağız
 const render = Render.create({
   canvas: canvas,
   engine: engine,
-  options: { wireframes:false, background:'#87CEEB', width:canvas.width, height:canvas.height }
+  options: { wireframes:true, background:'#87CEEB', width:canvas.width, height:canvas.height }
 });
 Render.run(render);
 Runner.run(Runner.create(), engine);
 
-// Araba sprite
+// Araba
 const carWidth = 80;
 const carHeight = 40;
 const car = Bodies.rectangle(200, 200, carWidth, carHeight, { friction:0.001, restitution:0.1 });
 World.add(world, car);
 
-// Arazi
+// Terrain
 let terrain = [];
 function generateTerrain() {
   let x = 0;
@@ -56,7 +57,7 @@ function generateTerrain() {
   for(let i=0;i<50;i++){
     let y = lastY + (Math.random()*80 - 40);
     y = Math.min(canvas.height-50, Math.max(50,y));
-    let rect = Bodies.rectangle(x+100, y+20, 200, canvas.height-y, { isStatic:true, render:{fillStyle:'#228B22'} });
+    let rect = Bodies.rectangle(x+100, y+((canvas.height-y)/2), 200, canvas.height-y, { isStatic:true, render:{fillStyle:'#228B22'} });
     World.add(world, rect);
     terrain.push(rect);
     lastY = y;
@@ -74,10 +75,10 @@ function updateFuel(amount){
 
 // Kontroller
 function applyControls(up, left, right){
-  if(fuel <=0) return; // yakıt bitince hareket yok
-  if(up) { Body.applyForce(car, car.position, {x:0, y:-0.05}); updateFuel(-0.1); }
-  if(left) { Body.applyForce(car, car.position, {x:-0.02, y:0}); updateFuel(-0.05); }
-  if(right) { Body.applyForce(car, car.position, {x:0.02, y:0}); updateFuel(-0.05); }
+  if(fuel <=0) return; 
+  if(up) { Body.applyForce(car, car.position, {x:0, y:-0.04}); updateFuel(-0.15); }
+  if(left) { Body.applyForce(car, car.position, {x:-0.02, y:0}); updateFuel(-0.07); }
+  if(right) { Body.applyForce(car, car.position, {x:0.02, y:0}); updateFuel(-0.07); }
 }
 
 document.getElementById('up').addEventListener('touchstart',()=>applyControls(true,false,false));
@@ -90,21 +91,22 @@ document.addEventListener('keydown',(e)=>{
   if(e.key==='ArrowRight') applyControls(false,false,true);
 });
 
-// Kamera takibi ve çizim
+// Kamera ve çizim
 const carImg = new Image();
 carImg.src = 'https://i.imgur.com/8bOHL1l.png'; // basit araba sprite
 
 (function renderLoop(){
-  let ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext('2d');
   ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,canvas.width,canvas.height);
+  
+  // Kamera araba etrafında
   ctx.translate(-car.position.x + canvas.width/3,0);
 
   // Terrain çizimi
   ctx.fillStyle = '#228B22';
   terrain.forEach(t=>{
-    ctx.fillRect(t.position.x - t.bounds.max.x + t.bounds.min.x, t.position.y - t.bounds.max.y + t.bounds.min.y,
-                 t.bounds.max.x - t.bounds.min.x, t.bounds.max.y - t.bounds.min.y);
+    ctx.fillRect(t.position.x - 100, t.position.y - (canvas.height-t.position.y)/2, 200, canvas.height-t.position.y);
   });
 
   // Araba çizimi
