@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mini Hill Climb .io</title>
+<style>
+  body { margin:0; overflow:hidden; background:#87CEEB; }
+  canvas { display:block; margin:0 auto; background:#87CEEB; }
+  #controls { position:fixed; bottom:20px; width:100%; text-align:center; }
+  .btn { font-size:24px; padding:10px 20px; margin:5px; background:#fff; border:1px solid #000; border-radius:10px; }
+</style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
+<div id="controls">
+  <button class="btn" id="left">⬅️</button>
+  <button class="btn" id="up">⬆️</button>
+  <button class="btn" id="right">➡️</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+<script>
+const { Engine, Render, Runner, World, Bodies, Body } = Matter;
+
+const canvas = document.getElementById('game');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+const engine = Engine.create();
+const world = engine.world;
+
+const render = Render.create({
+  canvas: canvas,
+  engine: engine,
+  options: { wireframes:false, background:'#87CEEB', width:canvas.width, height:canvas.height }
+});
+Render.run(render);
+Runner.run(Runner.create(), engine);
+
+// Araba
+const car = Bodies.rectangle(200, 200, 80, 40, { friction:0.001, restitution:0.1 });
+World.add(world, car);
+
+// Zemin
+let terrain = [];
+function generateTerrain() {
+  let x = 0;
+  let lastY = canvas.height - 100;
+  for(let i=0;i<50;i++){
+    let y = lastY + (Math.random()*80 - 40);
+    y = Math.min(canvas.height-50, Math.max(50,y));
+    let rect = Bodies.rectangle(x+100, y+20, 200, canvas.height-y, { isStatic:true, render:{fillStyle:'#228B22'} });
+    World.add(world, rect);
+    terrain.push(rect);
+    lastY = y;
+    x += 200;
+  }
+}
+generateTerrain();
+
+// Kontroller
+document.getElementById('up').addEventListener('touchstart',()=>{ Body.applyForce(car, car.position, {x:0, y:-0.05}) });
+document.getElementById('left').addEventListener('touchstart',()=>{ Body.applyForce(car, car.position, {x:-0.02, y:0}) });
+document.getElementById('right').addEventListener('touchstart',()=>{ Body.applyForce(car, car.position, {x:0.02, y:0}) });
+
+document.addEventListener('keydown',(e)=>{
+  if(e.key==='ArrowUp') Body.applyForce(car, car.position, {x:0, y:-0.05});
+  if(e.key==='ArrowLeft') Body.applyForce(car, car.position, {x:-0.02, y:0});
+  if(e.key==='ArrowRight') Body.applyForce(car, car.position, {x:0.02, y:0});
+});
+
+// Kamera takibi
+(function renderLoop(){
+  let ctx = canvas.getContext('2d');
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.translate(-car.position.x + canvas.width/3,0);
+
+  // Terrain çizimi
+  ctx.fillStyle = '#228B22';
+  terrain.forEach(t=>{
+    ctx.fillRect(t.position.x - t.bounds.max.x + t.bounds.min.x, t.position.y - t.bounds.max.y + t.bounds.min.y,
+                 t.bounds.max.x - t.bounds.min.x, t.bounds.max.y - t.bounds.min.y);
+  });
+
+  // Araba çizimi
+  ctx.save();
+  ctx.translate(car.position.x, car.position.y);
+  ctx.rotate(car.angle);
+  ctx.fillStyle='red';
+  ctx.fillRect(-40,-20,80,40);
+  ctx.restore();
+
+  requestAnimationFrame(renderLoop);
+})();
+</script>
+</body>
+</html>
